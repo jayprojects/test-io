@@ -1,0 +1,34 @@
+using System;
+using System.Diagnostics;
+using System.Threading;
+using System.Threading.Tasks;
+
+public class ProcessWatcher
+{
+    public static void StartProcessAndWatch(string exePath, Action<Process> onExit)
+    {
+        var process = new Process
+        {
+            StartInfo = new ProcessStartInfo
+            {
+                FileName = exePath,
+                UseShellExecute = true
+            },
+            EnableRaisingEvents = false // not relying on Exited event
+        };
+
+        process.Start();
+
+        // Watch asynchronously
+        Task.Run(() =>
+        {
+            process.WaitForExit();  // this unblocks even if killed by Task Manager
+            onExit?.Invoke(process);
+        });
+    }
+}
+ProcessWatcher.StartProcessAndWatch("notepad.exe", p =>
+{
+    // This will run even if killed by task manager
+    Console.WriteLine($"Process {p.Id} has terminated at {DateTime.Now}");
+});
