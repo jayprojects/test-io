@@ -1,1 +1,142 @@
-W1wb3J0IG1pY3Jvc29mdC5leGNoYW5nZS53ZWJzZXJ2aWNlcy5kYXRhLmNvcmUuRXhjaGFuZ2VTZXJ2aWNlOwppbXBvcnQgbWljcm9zb2Z0LmV4Y2hhbmdlLndlYnNlcnZpY2VzLmRhdGEuY29yZS5lbnVtZXJhdGlvbi5wcm9wZXJ0eS5XZWxsS25vd25Gb2xkZXJOYW1lOwppbXBvcnQgbWljcm9zb2Z0LmV4Y2hhbmdlLndlYnNlcnZpY2VzLmRhdGEuY29yZS5zZXJ2aWNlLmZvbGRlci5Gb2xkZXI7CmltcG9ydCBtaWNyb3NvZnQuZXhjaGFuZ2Uud2Vic2VydmljZXMuZGF0YS5jb3JlLnNlcnZpY2UuaXRlbS5FbWFpbE1lc3NhZ2U7CmltcG9ydCBtaWNyb3NvZnQuZXhjaGFuZ2Uud2Vic2VydmljZXMuZGF0YS5jb3JlLnNlcnZpY2UuaXRlbS5JdGVtOwppbXBvcnQgbWljcm9zb2Z0LmV4Y2hhbmdlLndlYnNlcnZpY2VzLmRhdGEuc2VhcmNoLkZpbmRJdGVtc1Jlc3VsdHM7CmltcG9ydCBtaWNyb3NvZnQuZXhjaGFuZ2Uud2Vic2VydmljZXMuZGF0YS5zZWFyY2guRm9sZGVyVmlldzsKaW1wb3J0IG1pY3Jvc29mdC5leGNoYW5nZS53ZWJzZXJ2aWNlcy5kYXRhLnNlYXJjaC5JdGVtVmlldzsKaW1wb3J0IG1pY3Jvc29mdC5leGNoYW5nZS53ZWJzZXJ2aWNlcy5kYXRhLnNlYXJjaC5maWx0ZXIuU2VhcmNoRmlsdGVyOwppbXBvcnQgbWljcm9zb2Z0LmV4Y2hhbmdlLndlYnNlcnZpY2VzLmRhdGEucHJvcGVydHkuY29tcGxleC5Gb2xkZXJJZDsKaW1wb3J0IG1pY3Jvc29mdC5leGNoYW5nZS53ZWJzZXJ2aWNlcy5kYXRhLnByb3BlcnR5LmNvbXBsZXguTWFpbGJveDsKCnB1YmxpYyBTdHJpbmcgbW92ZUVtYWlscyhFeGNoYW5nZVNlcnZpY2Ugc2VydmljZSwgU3RyaW5nIG1haWxib3hOYW1lLCBTdHJpbmcgc291cmNlRm9sZGVyTmFtZSwgCiAgICAgICAgICAgICAgICAgICAgICAgICBTdHJpbmcgZGVzdEZvbGRlck5hbWUsIFN0cmluZyBtYWlsTW92ZVN0YXR1cywgU3RyaW5nIHN1YmplY3QpIHsKICAgIAogICAgd3JpdGVMb2coIk5vcm1hbCIsICJbSU5GT10gSmF2YSBFV1MgRW1haWwgTW92ZSBTdGFydGluZy4uLiIpOwogICAgCiAgICB0cnkgewogICAgICAgIC8vIDEuIEFjY2VzcyB0aGUgTWFpbGJveAogICAgICAgIE1haWxib3ggdGFyZ2V0TWFpbGJveCA9IG5ldyBNYWlsYm94KG1haWxib3hOYW1lKTsKICAgICAgICBGb2xkZXJJZCByb290SWQgPSBuZXcgRm9sZGVySWQoV2VsbEtub3duRm9sZGVyTmFtZS5Nc2dGb2xkZXJSb290LCB0YXJnZXRNYWlsYm94KTsKCiAgICAgICAgLy8gMi4gRmluZCBTb3VyY2UgYW5kIERlc3RpbmF0aW9uIEZvbGRlcnMKICAgICAgICBGb2xkZXIgc3JjRm9sZGVyID0gZmluZEZvbGRlckJ5TmFtZShzZXJ2aWNlLCByb290SWQsIHNvdXJjZUZvbGRlck5hbWUpOwogICAgICAgIEZvbGRlciBkZXN0Rm9sZGVyID0gZmluZEZvbGRlckJ5TmFtZShzZXJ2aWNlLCByb290SWQsIGRlc3RGb2xkZXJOYW1lKTsKCiAgICAgICAgaWYgKHNyY0ZvbGRlciA9PSBudWxsIHx8IGRlc3RGb2xkZXIgPT0gbnVsbCkgewogICAgICAgICAgICB3cml0ZUxvZygiTm9ybWFsIiwgIltFUlJPUl0gU291cmNlL0Rlc3RpbmF0aW9uIGZvbGRlciBtaXNzaW5nLiIpOwogICAgICAgICAgICByZXR1cm4gIlNvdXJjZS9EZXN0aW5hdGlvbiBmb2xkZXIgZG9lcyBub3QgZXhpc3QiOwogICAgICAgIH0KCiAgICAgICAgd3JpdGVMb2coIk5vcm1hbCIsIFN0cmluZy5mb3JtYXQoIltJTkZPXSBTb3VyY2UgRm9sZGVyOiAlcyBDb3VudDogJWQiLCAKICAgICAgICAgICAgICAgICBzb3VyY2VGb2xkZXJOYW1lLCBzcmNGb2xkZXIuZ2V0VG90YWxDb3VudCgpKSk7CgogICAgICAgIC8vIDMuIERlZmluZSBmaWx0ZXJzIChtaW1pY2tpbmcgdGhlIEMjIGxvZ2ljOiBTdWJqZWN0IG1hdGNoLCBub3QgdW5kZWxpdmVyYWJsZSwgbm90IGF1dG8tcmVwbHkpCiAgICAgICAgSXRlbVZpZXcgdmlldyA9IG5ldyBJdGVtVmlldyhzcmNGb2xkZXIuZ2V0VG90YWxDb3VudCgpID4gMCA/IHNyY0ZvbGRlci5nZXRUb3RhbENvdW50KCkgOiAxKTsKICAgICAgICBGaW5kSXRlbXNSZXN1bHRzPEl0ZW0+IHJlc3VsdHMgPSBzZXJ2aWNlLmZpbmRJdGVtcyhzcmNGb2xkZXIuZ2V0SWQoKSwgdmlldyk7CgogICAgICAgIGZvciAoSXRlbSBpdGVtIDogcmVzdWx0cykgewogICAgICAgICAgICBpZiAoaXRlbSBpbnN0YW5jZW9mIEVtYWlsTWVzc2FnZSkgewogICAgICAgICAgICAgICAgRW1haWxNZXNzYWdlIG1haWwgPSAoRW1haWxNZXNzYWdlKSBpdGVtOwogICAgICAgICAgICAgICAgU3RyaW5nIG1haWxTdWJqZWN0ID0gbWFpbC5nZXRTdWJqZWN0KCk7CgogICAgICAgICAgICAgICAgaWYgKG1haWxTdWJqZWN0ICE9IG51bGwpIHsKICAgICAgICAgICAgICAgICAgICBTdHJpbmcgbG93ZXJTdWJqZWN0ID0gbWFpbFN1YmplY3QudG9Mb3dlckNhc2UoKTsKICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAvLyBGaWx0ZXIgTG9naWMKICAgICAgICAgICAgICAgICAgICBib29sZWFuIGlzRmlsdGVyTWF0Y2ggPSAhbG93ZXJTdWJqZWN0LmNvbnRhaW5zKCJ1bmRlbGl2ZXJhYmxlIikgJiYgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIWxvd2VyU3ViamVjdC5jb250YWlucygiYXV0b21hdGljIHJlcGx5IikgJiYgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgbWFpbFN1YmplY3QudHJpbSgpLmNvbnRhaW5zKHN1YmplY3QpOwoKICAgICAgICAgICAgICAgICAgICBpZiAoaXNGaWx0ZXJNYXRjaCkgewogICAgICAgICAgICAgICAgICAgICAgICB3cml0ZUxvZygiTm9ybWFsIiwgIltJTkZPXSBNb3ZpbmcgZW1haWw6ICIgKyBtYWlsU3ViamVjdCk7CiAgICAgICAgICAgICAgICAgICAgICAgIG1haWwubW92ZShkZXN0Rm9sZGVyLmdldElkKCkpOwogICAgICAgICAgICAgICAgICAgICAgICBtYWlsTW92ZVN0YXR1cyA9ICJUcnVlIjsKICAgICAgICAgICAgICAgICAgICAgICAgd3JpdGVMb2coIk5vcm1hbCIsICJbSU5GT10gTWFpbCBNb3ZlZDogIiArIG1haWxTdWJqZWN0KTsKICAgICAgICAgICAgICAgICAgICB9IGVsc2UgewogICAgICAgICAgICAgICAgICAgICAgICB3cml0ZUxvZygiTm9ybWFsIiwgIltJTkZPXSBTdWJqZWN0IG1pc21hdGNoLCBza2lwcGluZzogIiArIG1haWxTdWJqZWN0KTsKICAgICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgIH0KICAgICAgICB9CgogICAgICAgIHdyaXRlTG9nKCJOb3JtYWwiLCAiW0lORk9dIENPTVBMRVRFRCBlbWFpbCBtb3ZlIHByb2Nlc3MuIik7CiAgICAgICAgcmV0dXJuIG1haWxNb3ZlU3RhdHVzOwoKICAgIH0gY2F0Y2ggKEV4Y2VwdGlvbiBleCkgewogICAgICAgIHdyaXRlTG9nKCJOb3JtYWwiLCAiW0VSUk9SXSAiICsgZXguZ2V0TWVzc2FnZSgpKTsKICAgICAgICByZXR1cm4gIkVSUk9SOyBEZXNjcmlwdGlvbjogIiArIGV4LmdldE1lc3NhZ2UoKTsKICAgIH0KfQoKLy8gSGVscGVyIG1ldGhvZCB0byBmaW5kIGEgZm9sZGVyIGJ5IG5hbWUKcHJpdmF0ZSBGb2xkZXIgZmluZEZvbGRlckJ5TmFtZShFeGNoYW5nZVNlcnZpY2Ugc2VydmljZSwgRm9sZGVySWQgcGFyZW50SWQsIFN0cmluZyBuYW1lKSB0aHJvd3MgRXhjZXB0aW9uIHsKICAgIEZvbGRlclZpZXcgdmlldyA9IG5ldyBGb2xkZXJWaWV3KDEpOwogICAgU2VhcmNoRmlsdGVyIGZpbHRlciA9IG5ldyBTZWFyY2hGaWx0ZXIuSXNFcXVhbFRvKEZvbGRlci5EaXNwbGF5TmFtZSwgbmFtZSk7CiAgICB2YXIgcmVzdWx0cyA9IHNlcnZpY2UuZmluZEZvbGRlcnMocGFyZW50SWQsIGZpbHRlciwgdmlldyk7CiAgICByZXR1cm4gcmVzdWx0cy5nZXRGb2xkZXJzKCkuc2l6ZSgpID4gMCA/IHJlc3VsdHMuZ2V0Rm9sZGVycygpLmdldCgwKSA6IG51bGw7Cn0KCi8vIFBsYWNlaG9sZGVyIGZvciB5b3VyIGV4aXN0aW5nIGxvZ2dpbmcgbG9naWMKcHJpdmF0ZSB2b2lkIHdyaXRlTG9nKFN0cmluZyBsZXZlbCwgU3RyaW5nIG1lc3NhZ2UpIHsKICAgIFN5c3RlbS5vdXQucHJpbnRsbihsZXZlbCArICIgLSAiICsgbWVzc2FnZSk7Cn0=
+import microsoft.exchange.webservices.data.core.ExchangeService;
+import microsoft.exchange.webservices.data.core.enumeration.misc.ExchangeVersion;
+import microsoft.exchange.webservices.data.core.enumeration.property.BasePropertySet;
+import microsoft.exchange.webservices.data.core.enumeration.property.BodyType;
+import microsoft.exchange.webservices.data.core.enumeration.service.ConflictResolutionMode;
+import microsoft.exchange.webservices.data.core.enumeration.service.WellKnownFolderName;
+import microsoft.exchange.webservices.data.core.service.item.EmailMessage;
+import microsoft.exchange.webservices.data.credential.WebCredentials;
+import microsoft.exchange.webservices.data.property.complex.MessageBody;
+import microsoft.exchange.webservices.data.property.definition.PropertySet;
+import microsoft.exchange.webservices.data.search.FindItemsResults;
+import microsoft.exchange.webservices.data.search.ItemView;
+import microsoft.exchange.webservices.data.search.filter.SearchFilter;
+import microsoft.exchange.webservices.data.core.service.schema.EmailMessageSchema;
+import microsoft.exchange.webservices.data.core.service.item.Item;
+
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.List;
+
+public class EwsMailClient {
+
+    /**
+     * Create and configure an ExchangeService for EWS.
+     *
+     * @param ewsUrl    e.g. https://mail.company.com/EWS/Exchange.asmx
+     * @param username  often a UPN/email (user@domain) or DOMAIN\\user depending on your Exchange config
+     * @param password  password for the mailbox/user
+     */
+    public static ExchangeService connect(String ewsUrl, String username, String password) throws Exception {
+        ExchangeService service = new ExchangeService(ExchangeVersion.Exchange2010_SP2);
+
+        // Credentials (avoid hardcoding password; load from env/secret store in real apps)
+        service.setCredentials(new WebCredentials(username, password));
+
+        // EWS endpoint
+        service.setUrl(new URI(ewsUrl));
+
+        // Optional: enable tracing for debugging (DO NOT enable in production with secrets in logs)
+        // service.setTraceEnabled(true);
+
+        return service;
+    }
+
+    /**
+     * Send an email (and save a copy to Sent Items).
+     */
+    public static void sendEmail(
+            ExchangeService service,
+            List<String> toRecipients,
+            String subject,
+            String body,
+            boolean bodyIsHtml
+    ) throws Exception {
+
+        EmailMessage msg = new EmailMessage(service);
+
+        for (String to : toRecipients) {
+            msg.getToRecipients().add(to);
+        }
+
+        msg.setSubject(subject);
+
+        BodyType bt = bodyIsHtml ? BodyType.HTML : BodyType.Text;
+        msg.setBody(new MessageBody(bt, body));
+
+        // Sends the message and saves a copy in Sent Items
+        msg.sendAndSaveCopy();
+    }
+
+    /**
+     * Fetch the latest messages from Inbox.
+     *
+     * @param maxCount   max number of items to fetch
+     * @param unreadOnly if true, returns only unread messages
+     */
+    public static List<EmailMessage> readInbox(
+            ExchangeService service,
+            int maxCount,
+            boolean unreadOnly
+    ) throws Exception {
+
+        ItemView view = new ItemView(maxCount);
+
+        FindItemsResults<Item> results;
+        if (unreadOnly) {
+            SearchFilter unreadFilter =
+                    new SearchFilter.IsEqualTo(EmailMessageSchema.IsRead, false);
+            results = service.findItems(WellKnownFolderName.Inbox, unreadFilter, view);
+        } else {
+            results = service.findItems(WellKnownFolderName.Inbox, view);
+        }
+
+        // Ensure we load useful fields like subject, from, body, etc.
+        PropertySet props = new PropertySet(BasePropertySet.FirstClassProperties);
+        props.setRequestedBodyType(BodyType.Text); // change to HTML if you want
+
+        List<EmailMessage> emails = new ArrayList<>();
+        for (Item item : results.getItems()) {
+            EmailMessage email = EmailMessage.bind(service, item.getId(), props);
+            emails.add(email);
+        }
+        return emails;
+    }
+
+    /**
+     * Mark a message as read.
+     */
+    public static void markAsRead(EmailMessage email) throws Exception {
+        email.setIsRead(true);
+        email.update(ConflictResolutionMode.AlwaysOverwrite);
+    }
+
+    // Example usage
+    public static void main(String[] args) throws Exception {
+        String ewsUrl = "https://your-server/EWS/Exchange.asmx";
+        String username = "user@company.com";
+        String password = System.getenv("EWS_PASSWORD"); // recommended
+
+        ExchangeService service = connect(ewsUrl, username, password);
+
+        // Send
+        sendEmail(
+                service,
+                List.of("someone@example.com"),
+                "Test from EWS Java",
+                "<b>Hello</b> from EWS",
+                true
+        );
+
+        // Read (latest 10 unread)
+        List<EmailMessage> unread = readInbox(service, 10, true);
+        for (EmailMessage m : unread) {
+            System.out.println("Subject: " + m.getSubject());
+            System.out.println("From: " + (m.getFrom() != null ? m.getFrom().getAddress() : "(unknown)"));
+            System.out.println("Body: " + (m.getBody() != null ? m.getBody().toString() : ""));
+            System.out.println("-----");
+
+            // markAsRead(m);
+        }
+    }
+}
