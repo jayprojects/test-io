@@ -1,142 +1,69 @@
-import microsoft.exchange.webservices.data.core.ExchangeService;
 import microsoft.exchange.webservices.data.core.enumeration.misc.ExchangeVersion;
 import microsoft.exchange.webservices.data.core.enumeration.property.BasePropertySet;
 import microsoft.exchange.webservices.data.core.enumeration.property.BodyType;
-import microsoft.exchange.webservices.data.core.enumeration.service.ConflictResolutionMode;
 import microsoft.exchange.webservices.data.core.enumeration.service.WellKnownFolderName;
 import microsoft.exchange.webservices.data.core.service.item.EmailMessage;
-import microsoft.exchange.webservices.data.credential.WebCredentials;
-import microsoft.exchange.webservices.data.property.complex.MessageBody;
+import microsoft.exchange.webservices.data.core.service.item.Item;
+import microsoft.exchange.webservices.data.core.service.schema.EmailMessageSchema;
 import microsoft.exchange.webservices.data.property.definition.PropertySet;
 import microsoft.exchange.webservices.data.search.FindItemsResults;
 import microsoft.exchange.webservices.data.search.ItemView;
 import microsoft.exchange.webservices.data.search.filter.SearchFilter;
-import microsoft.exchange.webservices.data.core.service.schema.EmailMessageSchema;
-import microsoft.exchange.webservices.data.core.service.item.Item;
-
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.List;
 
 public class EwsMailClient {
 
     /**
-     * Create and configure an ExchangeService for EWS.
+     * Read a particular email from Inbox by EXACT subject match.
      *
-     * @param ewsUrl    e.g. https://mail.company.com/EWS/Exchange.asmx
-     * @param username  often a UPN/email (user@domain) or DOMAIN\\user depending on your Exchange config
-     * @param password  password for the mailbox/user
+     * Notes:
+     * - EWS "Subject" is typically the displayed subject (may include prefixes like "RE:" / "FW:")
+     * - If there are multiple matches, this returns the first found (you can expand to return a list).
+     *
+     * @param service     connected ExchangeService
+     * @param exactSubject subject to match exactly (case-sensitive behavior depends on server; often case-insensitive)
+     * @param unreadOnly  if true, only match unread messages
+     * @param maxSearch   how many recent items to scan (e.g., 50/200)
+     * @param bodyType    BodyType.Text or BodyType.HTML for requested body format
+     * @return EmailMessage with full properties loaded, or null if not found
      */
-    public static ExchangeService connect(String ewsUrl, String username, String password) throws Exception {
-        ExchangeService service = new ExchangeService(ExchangeVersion.Exchange2010_SP2);
-
-        // Credentials (avoid hardcoding password; load from env/secret store in real apps)
-        service.setCredentials(new WebCredentials(username, password));
-
-        // EWS endpoint
-        service.setUrl(new URI(ewsUrl));
-
-        // Optional: enable tracing for debugging (DO NOT enable in production with secrets in logs)
-        // service.setTraceEnabled(true);
-
-        return service;
-    }
-
-    /**
-     * Send an email (and save a copy to Sent Items).
-     */
-    public static void sendEmail(
-            ExchangeService service,
-            List<String> toRecipients,
-            String subject,
-            String body,
-            boolean bodyIsHtml
+    public static EmailMessage readEmailByExactSubject(
+            microsoft.exchange.webservices.data.core.ExchangeService service,
+            String exactSubject,
+            boolean unreadOnly,
+            int maxSearch,
+            BodyType bodyType
     ) throws Exception {
 
-        EmailMessage msg = new EmailMessage(service);
+        // Build filter: Subject == exactSubject (and optionally IsRead == false)
+        SearchFilter subjectFilter = new SearchFilter.IsEqualTo(EmailMessageSchema.Subject, exactSubject);
 
-        for (String to : toRecipients) {
-            msg.getToRecipients().add(to);
-        }
-
-        msg.setSubject(subject);
-
-        BodyType bt = bodyIsHtml ? BodyType.HTML : BodyType.Text;
-        msg.setBody(new MessageBody(bt, body));
-
-        // Sends the message and saves a copy in Sent Items
-        msg.sendAndSaveCopy();
-    }
-
-    /**
-     * Fetch the latest messages from Inbox.
-     *
-     * @param maxCount   max number of items to fetch
-     * @param unreadOnly if true, returns only unread messages
-     */
-    public static List<EmailMessage> readInbox(
-            ExchangeService service,
-            int maxCount,
-            boolean unreadOnly
-    ) throws Exception {
-
-        ItemView view = new ItemView(maxCount);
-
-        FindItemsResults<Item> results;
+        SearchFilter finalFilter = subjectFilter;
         if (unreadOnly) {
-            SearchFilter unreadFilter =
-                    new SearchFilter.IsEqualTo(EmailMessageSchema.IsRead, false);
-            results = service.findItems(WellKnownFolderName.Inbox, unreadFilter, view);
-        } else {
-            results = service.findItems(WellKnownFolderName.Inbox, view);
+            SearchFilter unreadFilter = new SearchFilter.IsEqualTo(EmailMessageSchema.IsRead, false);
+            finalFilter = new SearchFilter.SearchFilterCollection(
+                    SearchFilter.LogicalOperator.And,
+                    subjectFilter,
+                    unreadFilter
+            );
         }
 
-        // Ensure we load useful fields like subject, from, body, etc.
+        // Search Inbox (limit how many items you scan)
+        ItemView view = new ItemView(maxSearch);
+
+        // (Optional) If you want "newest first", you can add an OrderBy:
+        // view.getOrderBy().add(ItemSchema.DateTimeReceived, SortDirection.Descending);
+
+        FindItemsResults<Item> results = service.findItems(WellKnownFolderName.Inbox, finalFilter, view);
+
+        if (results.getTotalCount() == 0 || results.getItems().isEmpty()) {
+            return null;
+        }
+
+        // Bind the first matching item to load full properties + body
         PropertySet props = new PropertySet(BasePropertySet.FirstClassProperties);
-        props.setRequestedBodyType(BodyType.Text); // change to HTML if you want
+        props.setRequestedBodyType(bodyType);
 
-        List<EmailMessage> emails = new ArrayList<>();
-        for (Item item : results.getItems()) {
-            EmailMessage email = EmailMessage.bind(service, item.getId(), props);
-            emails.add(email);
-        }
-        return emails;
-    }
-
-    /**
-     * Mark a message as read.
-     */
-    public static void markAsRead(EmailMessage email) throws Exception {
-        email.setIsRead(true);
-        email.update(ConflictResolutionMode.AlwaysOverwrite);
-    }
-
-    // Example usage
-    public static void main(String[] args) throws Exception {
-        String ewsUrl = "https://your-server/EWS/Exchange.asmx";
-        String username = "user@company.com";
-        String password = System.getenv("EWS_PASSWORD"); // recommended
-
-        ExchangeService service = connect(ewsUrl, username, password);
-
-        // Send
-        sendEmail(
-                service,
-                List.of("someone@example.com"),
-                "Test from EWS Java",
-                "<b>Hello</b> from EWS",
-                true
-        );
-
-        // Read (latest 10 unread)
-        List<EmailMessage> unread = readInbox(service, 10, true);
-        for (EmailMessage m : unread) {
-            System.out.println("Subject: " + m.getSubject());
-            System.out.println("From: " + (m.getFrom() != null ? m.getFrom().getAddress() : "(unknown)"));
-            System.out.println("Body: " + (m.getBody() != null ? m.getBody().toString() : ""));
-            System.out.println("-----");
-
-            // markAsRead(m);
-        }
+        Item first = results.getItems().get(0);
+        return EmailMessage.bind(service, first.getId(), props);
     }
 }
