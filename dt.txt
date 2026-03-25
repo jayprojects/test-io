@@ -1,102 +1,120 @@
-import org.openqa.selenium.By;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebElement;
+package hello;
+//System.setProperty("webdriver.chrome.driver", "C:\\PortableApps\\chromedriver-win64-146\\chromedriver.exe");
+import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.support.ui.ExpectedConditions;
-import org.openqa.selenium.support.ui.WebDriverWait;
-
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
+import org.openqa.selenium.support.ui.*;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 public class CSEAnnouncementsScraper {
-    
+
     public static void main(String[] args) {
-        // Set up the Chrome WebDriver (ensure ChromeDriver is in your PATH)
-        System.setProperty("webdriver.chrome.driver", "path_to_chromedriver");
+        // Set up WebDriver
+        System.setProperty("webdriver.chrome.driver", "C:\\PortableApps\\chromedriver-win64-146\\chromedriver.exe");
         WebDriver driver = new ChromeDriver();
-        
+
         try {
-            // Step 1: Navigate to the URL
             driver.get("https://www.cse.lk/announcements");
-            
-            // Wait for the page to load and for the 'Get Data' button to be clickable
-            WebDriverWait wait = new WebDriverWait(driver, 20);
-            WebElement getDataButton = wait.until(ExpectedConditions.elementToBeClickable(By.id("get_data_button_id"))); // Replace with actual ID
-            
-            // Step 2: Click the "Get Data" button
-            getDataButton.click();
-            
-            // Step 3: Find the tables by title
-            List<WebElement> tables = driver.findElements(By.tagName("table"));
-            String[] tableTitles = {"DIVIDEND ANNOUNCEMENTS", "LISTED COMPANIES – NOTICE OF ANNUAL GENERAL MEETINGS (AGM)", "LISTED COMPANIES – NOTICE OF EXTRAORDINARY GENERAL MEETINGS (EGM)"};
-            
-            // Step 4: Iterate through the tables and extract data
-            for (String title : tableTitles) {
-                WebElement table = findTableByTitle(tables, title);
-                
-                if (table != null) {
-                    // Extract data and write to a CSV file
-                    String csvData = extractTableData(table);
-                    writeToCSV(csvData, title);
-                } else {
-                    // Create an empty CSV file if table doesn't exist
-                    writeToCSV("", title);
+
+            // Wait for the page to load completely
+            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(20));
+            wait.until(ExpectedConditions.presenceOfElementLocated(By.tagName("h3")));  // Waiting for h3 elements to load (table titles)
+
+            // Table titles with respective CSV file names
+            String[] tableTitles = {
+                    "DIVIDEND ANNOUNCEMENTS",
+                    "LISTED COMPANIES – NOTICE OF ANNUAL GENERAL MEETINGS (AGM)",
+                    "LISTED COMPANIES – NOTICE OF EXTRAORDINARY GENERAL MEETINGS (EGM)"
+            };
+
+            String[] outputFiles = {
+                    "Cash_Dividend_LK.csv",
+                    "Annual_General_Meeting_LK.csv",
+                    "Extraordinary_General_meeting_LK.csv"
+            };
+
+            for (int i = 0; i < tableTitles.length; i++) {
+                String title = tableTitles[i];
+                String outputFileName = outputFiles[i];
+
+                try {
+                    WebElement tableTitleElement = driver.findElement(By.xpath("//h3[contains(text(), '" + title + "')]"));
+                    if (tableTitleElement != null) {
+                        System.out.println("Found table for: " + title);
+
+                        // Locate the parent div for the table
+                        WebElement tableParentDiv = tableTitleElement.findElement(By.xpath("./ancestor::div[@class='mb-8']"));
+                        WebElement table = tableParentDiv.findElement(By.xpath(".//table[contains(@class, 'app-table')]"));
+
+                        if (table != null) {
+                            // Extract table data with correct formatting
+                            String csvData = extractTableData(table);
+                            writeToCSV(csvData, outputFileName);
+                            System.out.println("CSV file created for: " + title);
+                        }
+                    }
+                } catch (NoSuchElementException e) {
+                    System.out.println("No table found for: " + title);
+                    writeToCSV("", outputFileName);  // Create empty CSV if table is not found
                 }
             }
+
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
-            // Step 7: Clean up
             driver.quit();
         }
     }
 
-    // Step 3: Find the table with the specific title
-    private static WebElement findTableByTitle(List<WebElement> tables, String title) {
-        for (WebElement table : tables) {
-            WebElement header = table.findElement(By.tagName("thead")).findElement(By.tagName("th"));
-            if (header.getText().contains(title)) {
-                return table;
-            }
-        }
-        return null;
-    }
-    
-    // Step 4: Extract table data and create tab-delimited CSV format
+    // Extract the data from the table and format it as a comma-separated CSV with double quotes around each field
     private static String extractTableData(WebElement table) {
         StringBuilder data = new StringBuilder();
+
+        // Get the headers dynamically from the table
+        List<WebElement> headers = table.findElements(By.xpath(".//thead//th"));
+        String[] headerColumns = new String[headers.size()];
+
+        for (int i = 0; i < headers.size(); i++) {
+            headerColumns[i] = "\"" + headers.get(i).getText().trim().replace("\"", "\"\"") + "\""; // Enclose headers in quotes
+        }
+        // Join headers with commas and add to the CSV data
+        data.append(String.join(",", headerColumns) + "\n");
+
+        // Get all rows from the table
         List<WebElement> rows = table.findElements(By.tagName("tr"));
-        
+
+        // Loop through each row
         for (WebElement row : rows) {
             List<WebElement> columns = row.findElements(By.tagName("td"));
-            
-            for (WebElement column : columns) {
-                // Remove any tabs in the source text
-                String cellData = column.getText().replace("\t", " ");
-                data.append(cellData).append("\t");
+
+            if (columns.size() > 0) {  // Only process rows with data (ignores empty rows)
+                String[] rowData = new String[columns.size()];
+
+                for (int i = 0; i < columns.size(); i++) {
+                    rowData[i] = "\"" + columns.get(i).getText().trim().replace("\"", "\"\"") + "\"";  // Enclose each cell in quotes
+                }
+
+                // Join row data with commas and add to the CSV data
+                data.append(String.join(",", rowData) + "\n");
             }
-            
-            if (data.length() > 0) {
-                data.setLength(data.length() - 1); // Remove the last tab
-            }
-            data.append("\n");
         }
+
         return data.toString();
     }
-    
-    // Step 6: Write data to CSV file
-    private static void writeToCSV(String data, String tableTitle) {
+
+    // Write data to a CSV file at C:\temp with UTF-8 encoding
+    private static void writeToCSV(String data, String fileName) {
         File directory = new File("C:\\temp");
         if (!directory.exists()) {
-            directory.mkdirs(); // Create the directory if it does not exist
+            directory.mkdirs(); // Ensure the directory exists
         }
-        
-        String fileName = "C:\\temp\\" + tableTitle.replaceAll("[^a-zA-Z0-9]", "_") + ".csv"; // Remove invalid file characters
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(fileName))) {
+
+        String filePath = "C:\\temp\\" + fileName;
+
+        // Use OutputStreamWriter with UTF-8 encoding explicitly
+        try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(filePath), StandardCharsets.UTF_8))) {
             writer.write(data);
         } catch (IOException e) {
             e.printStackTrace();
