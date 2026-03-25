@@ -1,69 +1,105 @@
-import microsoft.exchange.webservices.data.core.enumeration.misc.ExchangeVersion;
-import microsoft.exchange.webservices.data.core.enumeration.property.BasePropertySet;
-import microsoft.exchange.webservices.data.core.enumeration.property.BodyType;
-import microsoft.exchange.webservices.data.core.enumeration.service.WellKnownFolderName;
-import microsoft.exchange.webservices.data.core.service.item.EmailMessage;
-import microsoft.exchange.webservices.data.core.service.item.Item;
-import microsoft.exchange.webservices.data.core.service.schema.EmailMessageSchema;
-import microsoft.exchange.webservices.data.property.definition.PropertySet;
-import microsoft.exchange.webservices.data.search.FindItemsResults;
-import microsoft.exchange.webservices.data.search.ItemView;
-import microsoft.exchange.webservices.data.search.filter.SearchFilter;
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
 
-public class EwsMailClient {
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
 
-    /**
-     * Read a particular email from Inbox by EXACT subject match.
-     *
-     * Notes:
-     * - EWS "Subject" is typically the displayed subject (may include prefixes like "RE:" / "FW:")
-     * - If there are multiple matches, this returns the first found (you can expand to return a list).
-     *
-     * @param service     connected ExchangeService
-     * @param exactSubject subject to match exactly (case-sensitive behavior depends on server; often case-insensitive)
-     * @param unreadOnly  if true, only match unread messages
-     * @param maxSearch   how many recent items to scan (e.g., 50/200)
-     * @param bodyType    BodyType.Text or BodyType.HTML for requested body format
-     * @return EmailMessage with full properties loaded, or null if not found
-     */
-    public static EmailMessage readEmailByExactSubject(
-            microsoft.exchange.webservices.data.core.ExchangeService service,
-            String exactSubject,
-            boolean unreadOnly,
-            int maxSearch,
-            BodyType bodyType
-    ) throws Exception {
-
-        // Build filter: Subject == exactSubject (and optionally IsRead == false)
-        SearchFilter subjectFilter = new SearchFilter.IsEqualTo(EmailMessageSchema.Subject, exactSubject);
-
-        SearchFilter finalFilter = subjectFilter;
-        if (unreadOnly) {
-            SearchFilter unreadFilter = new SearchFilter.IsEqualTo(EmailMessageSchema.IsRead, false);
-            finalFilter = new SearchFilter.SearchFilterCollection(
-                    SearchFilter.LogicalOperator.And,
-                    subjectFilter,
-                    unreadFilter
-            );
+public class CSEAnnouncementsScraper {
+    
+    public static void main(String[] args) {
+        // Set up the Chrome WebDriver (ensure ChromeDriver is in your PATH)
+        System.setProperty("webdriver.chrome.driver", "path_to_chromedriver");
+        WebDriver driver = new ChromeDriver();
+        
+        try {
+            // Step 1: Navigate to the URL
+            driver.get("https://www.cse.lk/announcements");
+            
+            // Wait for the page to load and for the 'Get Data' button to be clickable
+            WebDriverWait wait = new WebDriverWait(driver, 20);
+            WebElement getDataButton = wait.until(ExpectedConditions.elementToBeClickable(By.id("get_data_button_id"))); // Replace with actual ID
+            
+            // Step 2: Click the "Get Data" button
+            getDataButton.click();
+            
+            // Step 3: Find the tables by title
+            List<WebElement> tables = driver.findElements(By.tagName("table"));
+            String[] tableTitles = {"DIVIDEND ANNOUNCEMENTS", "LISTED COMPANIES – NOTICE OF ANNUAL GENERAL MEETINGS (AGM)", "LISTED COMPANIES – NOTICE OF EXTRAORDINARY GENERAL MEETINGS (EGM)"};
+            
+            // Step 4: Iterate through the tables and extract data
+            for (String title : tableTitles) {
+                WebElement table = findTableByTitle(tables, title);
+                
+                if (table != null) {
+                    // Extract data and write to a CSV file
+                    String csvData = extractTableData(table);
+                    writeToCSV(csvData, title);
+                } else {
+                    // Create an empty CSV file if table doesn't exist
+                    writeToCSV("", title);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            // Step 7: Clean up
+            driver.quit();
         }
+    }
 
-        // Search Inbox (limit how many items you scan)
-        ItemView view = new ItemView(maxSearch);
-
-        // (Optional) If you want "newest first", you can add an OrderBy:
-        // view.getOrderBy().add(ItemSchema.DateTimeReceived, SortDirection.Descending);
-
-        FindItemsResults<Item> results = service.findItems(WellKnownFolderName.Inbox, finalFilter, view);
-
-        if (results.getTotalCount() == 0 || results.getItems().isEmpty()) {
-            return null;
+    // Step 3: Find the table with the specific title
+    private static WebElement findTableByTitle(List<WebElement> tables, String title) {
+        for (WebElement table : tables) {
+            WebElement header = table.findElement(By.tagName("thead")).findElement(By.tagName("th"));
+            if (header.getText().contains(title)) {
+                return table;
+            }
         }
-
-        // Bind the first matching item to load full properties + body
-        PropertySet props = new PropertySet(BasePropertySet.FirstClassProperties);
-        props.setRequestedBodyType(bodyType);
-
-        Item first = results.getItems().get(0);
-        return EmailMessage.bind(service, first.getId(), props);
+        return null;
+    }
+    
+    // Step 4: Extract table data and create tab-delimited CSV format
+    private static String extractTableData(WebElement table) {
+        StringBuilder data = new StringBuilder();
+        List<WebElement> rows = table.findElements(By.tagName("tr"));
+        
+        for (WebElement row : rows) {
+            List<WebElement> columns = row.findElements(By.tagName("td"));
+            
+            for (WebElement column : columns) {
+                // Remove any tabs in the source text
+                String cellData = column.getText().replace("\t", " ");
+                data.append(cellData).append("\t");
+            }
+            
+            if (data.length() > 0) {
+                data.setLength(data.length() - 1); // Remove the last tab
+            }
+            data.append("\n");
+        }
+        return data.toString();
+    }
+    
+    // Step 6: Write data to CSV file
+    private static void writeToCSV(String data, String tableTitle) {
+        File directory = new File("C:\\temp");
+        if (!directory.exists()) {
+            directory.mkdirs(); // Create the directory if it does not exist
+        }
+        
+        String fileName = "C:\\temp\\" + tableTitle.replaceAll("[^a-zA-Z0-9]", "_") + ".csv"; // Remove invalid file characters
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(fileName))) {
+            writer.write(data);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }
