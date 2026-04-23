@@ -1,61 +1,27 @@
-param(
-    [string]$Subject = "",
-    [string]$AttachmentName = "",
-    [string]$DestinationPath = "",
-    [string]$IsUnread = "false",
-    [string]$MarkRead = "false",
-    [string]$FolderPath = "Inbox"
-)
+# 2. Build Filter (DASL Syntax)
+# We use the MAPI property tags to ensure Outlook understands the query
+$propSubject    = "http://schemas.microsoft.com/mapi/proptag/0x0037001E"
+$propAttachment = "http://schemas.microsoft.com/mapi/proptag/0x0E1B000B"
 
-$ol = New-Object -ComObject Outlook.Application
-$namespace = $ol.GetNamespace("MAPI")
+$filters = @()
 
-# 1. Direct Folder Access
-$account = $namespace.GetDefaultFolder(6).Parent
-try {
-    $targetFolder = if ($FolderPath -ne "") { $account.Folders.Item($FolderPath) } else { $namespace.GetDefaultFolder(6) }
-} catch {
-    Write-Host "ERROR: Folder not found"
-    exit
+# Add Subject filter (using LIKE for partial match)
+if ($Subject -ne "") {
+    $filters += " ""$propSubject"" LIKE '%$Subject%' "
 }
 
-# 2. Build Filter
-$filters = @()
-if ($IsUnread -eq "true") { $filters += "[UnRead] = True" }
-if ($Subject -ne "")     { $filters += "[Subject] LIKE '%$Subject%'" }
-# High-performance check: only look for emails that actually have attachments
-$filters += "[HasAttachment] = True"
+# Add Has Attachment filter (1 = True)
+$filters += " ""$propAttachment"" = 1 "
 
-$finalFilter = "([ " + ($filters -join " ] AND [ ") + " ])"
+# Add Unread filter if requested
+if ($IsUnread -eq "true") {
+    $filters += " ""urn:schemas:httpmail:read"" = 0 "
+}
+
+# Construct the final @SQL string
+$finalFilter = "@SQL=" + ($filters -join " AND ")
 
 # 3. Find the most recent match
 $items = $targetFolder.Items
-$items.Sort("[ReceivedTime]", $true) # Sort descending so the first match is the newest
+$items.Sort("[ReceivedTime]", $true) 
 $matchedMail = $items.Find($finalFilter)
-
-if ($null -eq $matchedMail) {
-    Write-Host "ERROR: No email found matching this criteria"
-    exit
-}
-
-# 4. Process Attachment
-$found = $false
-foreach ($attachment in $matchedMail.Attachments) {
-    if ($attachment.FileName -eq $AttachmentName) {
-        $fullPath = Join-Path $DestinationPath $AttachmentName
-        $attachment.SaveAsFile($fullPath)
-        $found = $true
-        break
-    }
-}
-
-# 5. Handle Post-Download Actions
-if ($found) {
-    if ($MarkRead -eq "true") {
-        $matchedMail.UnRead = $false
-        $matchedMail.Save()
-    }
-    Write-Host "SUCCESS"
-} else {
-    Write-Host "ERROR: Attachment not found"
-}
