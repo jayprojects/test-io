@@ -1,49 +1,56 @@
 param(
+    [string]$FolderPath = "Inbox",
+    [string]$ReceivedAfter = "",
+    [string]$ReceivedBefore = "",
     [string]$Subject = "",
-    [string]$TargetFolderPath = "",
-    [string]$SourceFolderPath = "Inbox" # Defaulted to Inbox
+    [string]$SenderEmail = "",
+    [string]$IsUnread = "false",
+    [string]$MaxResults = 20
 )
 
 $ol = New-Object -ComObject Outlook.Application
 $namespace = $ol.GetNamespace("MAPI")
 
-# 1. Get the Source Folder
-# We try to get the folder from the default Inbox's parent (the Account level)
+# 1. Get Folder (Defaulting to Inbox if FolderPath is blank)
 $account = $namespace.GetDefaultFolder(6).Parent
 try {
-    $source = $account.Folders.Item($SourceFolderPath)
+    $targetFolder = if ($FolderPath -ne "") { $account.Folders.Item($FolderPath) } else { $namespace.GetDefaultFolder(6) }
 } catch {
-    Write-Host "Error: Source folder '$SourceFolderPath' not found."
-    exit
+    exit # Folder not found
 }
 
-# 2. Get the Target Folder
-try {
-    $target = $account.Folders.Item($TargetFolderPath)
-} catch {
-    Write-Host "Error: Target folder '$TargetFolderPath' not found."
-    exit
+# 2. Build the High-Performance Filter
+$filters = @()
+
+if ($IsUnread -eq "true") { $filters += "[UnRead] = True" }
+if ($Subject -ne "")    { $filters += "[Subject] LIKE '%$Subject%'" }
+if ($SenderEmail -ne "") { $filters += "[SenderEmailAddress] = '$SenderEmail'" }
+
+if ($ReceivedAfter -ne "") {
+    $afterDate = [datetime]$ReceivedAfter
+    $filters += "[ReceivedTime] >= '$($afterDate.ToString("g"))'"
+}
+if ($ReceivedBefore -ne "") {
+    $beforeDate = [datetime]$ReceivedBefore
+    $filters += "[ReceivedTime] <= '$($beforeDate.ToString("g"))'"
 }
 
-# 3. Apply a Filter (High Performance)
-# This tells Outlook to only give us the specific emails we want
-$filter = ""
-if ($Subject -ne "") {
-    # Using DASL filter for partial subject matches (works like 'Contains')
-    $filter = "@SQL=""http://schemas.microsoft.com/mapi/proptag/0x0037001E"" LIKE '%$Subject%'"
+# Combine filters with AND logic
+$finalFilter = if ($filters.Count -gt 0) { "([ " + ($filters -join " ] AND [ ") + " ])" } else { "" }
+
+# 3. Retrieve and Sort
+$items = $targetFolder.Items
+if ($finalFilter -ne "") { $items = $items.Restrict($finalFilter) }
+$items.Sort("[ReceivedTime]", $true) # Sort descending (newest first)
+
+# 4. Output results (only processing the requested MaxResults)
+$count = 0
+foreach ($mail in $items) {
+    if ($count -ge [int]$MaxResults) { break }
+    
+    # Body property is only accessed for the specific 20 items we want
+    $body = $mail.Body -replace "[\r\n]", " "
+    Write-Output "$($mail.Subject)|||$($mail.SenderName)|||$($mail.ReceivedTime)|||$body"
+    
+    $count++
 }
-
-$itemsToMove = if ($filter -ne "") { $source.Items.Restrict($filter) } else { $source.Items }
-
-# 4. Move items
-$count = $itemsToMove.Count
-$movedCount = 0
-
-# We use a 'while' loop because as you move item 1, 
-# item 2 becomes the new item 1.
-while ($itemsToMove.Count -gt 0) {
-    $itemsToMove.Item(1).Move($target)
-    $movedCount++
-}
-
-Write-Host "Successfully moved $movedCount emails from $SourceFolderPath to $TargetFolderPath"
