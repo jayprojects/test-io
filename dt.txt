@@ -1,1 +1,49 @@
-Test
+param(
+    [string]$Subject = "",
+    [string]$TargetFolderPath = "",
+    [string]$SourceFolderPath = "Inbox" # Defaulted to Inbox
+)
+
+$ol = New-Object -ComObject Outlook.Application
+$namespace = $ol.GetNamespace("MAPI")
+
+# 1. Get the Source Folder
+# We try to get the folder from the default Inbox's parent (the Account level)
+$account = $namespace.GetDefaultFolder(6).Parent
+try {
+    $source = $account.Folders.Item($SourceFolderPath)
+} catch {
+    Write-Host "Error: Source folder '$SourceFolderPath' not found."
+    exit
+}
+
+# 2. Get the Target Folder
+try {
+    $target = $account.Folders.Item($TargetFolderPath)
+} catch {
+    Write-Host "Error: Target folder '$TargetFolderPath' not found."
+    exit
+}
+
+# 3. Apply a Filter (High Performance)
+# This tells Outlook to only give us the specific emails we want
+$filter = ""
+if ($Subject -ne "") {
+    # Using DASL filter for partial subject matches (works like 'Contains')
+    $filter = "@SQL=""http://schemas.microsoft.com/mapi/proptag/0x0037001E"" LIKE '%$Subject%'"
+}
+
+$itemsToMove = if ($filter -ne "") { $source.Items.Restrict($filter) } else { $source.Items }
+
+# 4. Move items
+$count = $itemsToMove.Count
+$movedCount = 0
+
+# We use a 'while' loop because as you move item 1, 
+# item 2 becomes the new item 1.
+while ($itemsToMove.Count -gt 0) {
+    $itemsToMove.Item(1).Move($target)
+    $movedCount++
+}
+
+Write-Host "Successfully moved $movedCount emails from $SourceFolderPath to $TargetFolderPath"
