@@ -1,56 +1,61 @@
 param(
-    [string]$FolderPath = "Inbox",
-    [string]$ReceivedAfter = "",
-    [string]$ReceivedBefore = "",
     [string]$Subject = "",
-    [string]$SenderEmail = "",
+    [string]$AttachmentName = "",
+    [string]$DestinationPath = "",
     [string]$IsUnread = "false",
-    [string]$MaxResults = 20
+    [string]$MarkRead = "false",
+    [string]$FolderPath = "Inbox"
 )
 
 $ol = New-Object -ComObject Outlook.Application
 $namespace = $ol.GetNamespace("MAPI")
 
-# 1. Get Folder (Defaulting to Inbox if FolderPath is blank)
+# 1. Direct Folder Access
 $account = $namespace.GetDefaultFolder(6).Parent
 try {
     $targetFolder = if ($FolderPath -ne "") { $account.Folders.Item($FolderPath) } else { $namespace.GetDefaultFolder(6) }
 } catch {
-    exit # Folder not found
+    Write-Host "ERROR: Folder not found"
+    exit
 }
 
-# 2. Build the High-Performance Filter
+# 2. Build Filter
 $filters = @()
-
 if ($IsUnread -eq "true") { $filters += "[UnRead] = True" }
-if ($Subject -ne "")    { $filters += "[Subject] LIKE '%$Subject%'" }
-if ($SenderEmail -ne "") { $filters += "[SenderEmailAddress] = '$SenderEmail'" }
+if ($Subject -ne "")     { $filters += "[Subject] LIKE '%$Subject%'" }
+# High-performance check: only look for emails that actually have attachments
+$filters += "[HasAttachment] = True"
 
-if ($ReceivedAfter -ne "") {
-    $afterDate = [datetime]$ReceivedAfter
-    $filters += "[ReceivedTime] >= '$($afterDate.ToString("g"))'"
-}
-if ($ReceivedBefore -ne "") {
-    $beforeDate = [datetime]$ReceivedBefore
-    $filters += "[ReceivedTime] <= '$($beforeDate.ToString("g"))'"
-}
+$finalFilter = "([ " + ($filters -join " ] AND [ ") + " ])"
 
-# Combine filters with AND logic
-$finalFilter = if ($filters.Count -gt 0) { "([ " + ($filters -join " ] AND [ ") + " ])" } else { "" }
-
-# 3. Retrieve and Sort
+# 3. Find the most recent match
 $items = $targetFolder.Items
-if ($finalFilter -ne "") { $items = $items.Restrict($finalFilter) }
-$items.Sort("[ReceivedTime]", $true) # Sort descending (newest first)
+$items.Sort("[ReceivedTime]", $true) # Sort descending so the first match is the newest
+$matchedMail = $items.Find($finalFilter)
 
-# 4. Output results (only processing the requested MaxResults)
-$count = 0
-foreach ($mail in $items) {
-    if ($count -ge [int]$MaxResults) { break }
-    
-    # Body property is only accessed for the specific 20 items we want
-    $body = $mail.Body -replace "[\r\n]", " "
-    Write-Output "$($mail.Subject)|||$($mail.SenderName)|||$($mail.ReceivedTime)|||$body"
-    
-    $count++
+if ($null -eq $matchedMail) {
+    Write-Host "ERROR: No email found matching this criteria"
+    exit
+}
+
+# 4. Process Attachment
+$found = $false
+foreach ($attachment in $matchedMail.Attachments) {
+    if ($attachment.FileName -eq $AttachmentName) {
+        $fullPath = Join-Path $DestinationPath $AttachmentName
+        $attachment.SaveAsFile($fullPath)
+        $found = $true
+        break
+    }
+}
+
+# 5. Handle Post-Download Actions
+if ($found) {
+    if ($MarkRead -eq "true") {
+        $matchedMail.UnRead = $false
+        $matchedMail.Save()
+    }
+    Write-Host "SUCCESS"
+} else {
+    Write-Host "ERROR: Attachment not found"
 }
