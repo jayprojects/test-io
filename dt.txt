@@ -1,27 +1,18 @@
-# 2. Build Filter (DASL Syntax)
-# We use the MAPI property tags to ensure Outlook understands the query
-$propSubject    = "http://schemas.microsoft.com/mapi/proptag/0x0037001E"
-$propAttachment = "http://schemas.microsoft.com/mapi/proptag/0x0E1B000B"
+@Test
+public void testWithMockConstruction() {
+    try (MockedConstruction<ProcessBuilder> mocked = mockConstruction(ProcessBuilder.class, 
+        (mock, context) -> {
+            // Configure the mock behavior
+            Process mockProcess = mock(Process.class);
+            when(mock.start()).thenReturn(mockProcess);
+            // Setup input streams if your code reads output
+            when(mockProcess.getInputStream()).thenReturn(new ByteArrayInputStream("done".getBytes()));
+        })) {
 
-$filters = @()
+        ScriptRunner runner = new ScriptRunner();
+        runner.executeLogic();
 
-# Add Subject filter (using LIKE for partial match)
-if ($Subject -ne "") {
-    $filters += " ""$propSubject"" LIKE '%$Subject%' "
+        // The code inside executeLogic will now get a mock ProcessBuilder
+        assertEquals(1, mocked.constructed().size());
+    }
 }
-
-# Add Has Attachment filter (1 = True)
-$filters += " ""$propAttachment"" = 1 "
-
-# Add Unread filter if requested
-if ($IsUnread -eq "true") {
-    $filters += " ""urn:schemas:httpmail:read"" = 0 "
-}
-
-# Construct the final @SQL string
-$finalFilter = "@SQL=" + ($filters -join " AND ")
-
-# 3. Find the most recent match
-$items = $targetFolder.Items
-$items.Sort("[ReceivedTime]", $true) 
-$matchedMail = $items.Find($finalFilter)
