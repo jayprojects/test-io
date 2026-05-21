@@ -1,18 +1,174 @@
-@Test
-public void testWithMockConstruction() {
-    try (MockedConstruction<ProcessBuilder> mocked = mockConstruction(ProcessBuilder.class, 
-        (mock, context) -> {
-            // Configure the mock behavior
-            Process mockProcess = mock(Process.class);
-            when(mock.start()).thenReturn(mockProcess);
-            // Setup input streams if your code reads output
-            when(mockProcess.getInputStream()).thenReturn(new ByteArrayInputStream("done".getBytes()));
-        })) {
+using System;
+using System.IO;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Threading.Tasks;
 
-        ScriptRunner runner = new ScriptRunner();
-        runner.executeLogic();
+namespace CertificateDownloaderApp
+{
+    // --- Enums ---
+    public enum DownloadMode
+    {
+        Startup,
+        OnDemand
+    }
 
-        // The code inside executeLogic will now get a mock ProcessBuilder
-        assertEquals(1, mocked.constructed().size());
+    public enum StorageFormat
+    {
+        Encrypted,
+        Plain
+    }
+
+    // --- Properties / DTOs ---
+    public class StorageProperties
+    {
+        public string Path { get; set; }
+        public StorageFormat StorageFormat { get; set; } = StorageFormat.Encrypted;
+    }
+
+    public class CertificateProperties
+    {
+        public string Id { get; set; }
+        public string CertificateAlias { get; set; }
+        public string CertificatePassword { get; set; }
+        public DownloadMode DownloadMode { get; set; } = DownloadMode.OnDemand;
+        public StorageProperties StorageProperties { get; set; }
+    }
+
+    // --- Main Logic ---
+    public class CertificateDownloader
+    {
+        // Variables assumed to be in scope from the original snippet
+        private static readonly string invServiceUser = "";
+        private static readonly string invServicePass = "";
+        private static readonly string invServiceURL = "";
+        private static readonly string certificateSerialNumber = "";
+        private static readonly string certificateName = "";
+        private static readonly string certPassword = "";
+        private static readonly string certificateLocalStorePath = @"";
+        private static readonly string masterPassword = "";
+
+        public static async Task Main(string[] args)
+        {
+            Console.WriteLine("Certificate downloader started");
+
+            try
+            {
+                // Basic Auth Setup
+                var authString = $"{invServiceUser}:{invServicePass}";
+                var base64Auth = Convert.ToBase64String(Encoding.UTF8.GetBytes(authString));
+
+                // Connection Pooling / HTTP Client Setup
+                using var handler = new SocketsHttpHandler
+                {
+                    MaxConnectionsPerServer = 20,
+                    PooledConnectionLifetime = TimeSpan.FromMinutes(2) 
+                };
+
+                using var httpClient = new HttpClient(handler)
+                {
+                    BaseAddress = new Uri(invServiceURL)
+                };
+                
+                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", base64Auth);
+                httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+                Console.WriteLine($"Downloaded PFX file for serialNumber: {certificateSerialNumber}");
+
+                // REST Call
+                var requestUri = $"/pfx/{certificateSerialNumber}";
+                using var response = await httpClient.GetAsync(requestUri);
+
+                // Equivalent to the ErrorHandler lambda in Java
+                if (!response.IsSuccessStatusCode)
+                {
+                    Console.WriteLine($"Request failed: {response.RequestMessage}");
+                    response.EnsureSuccessStatusCode(); 
+                }
+
+                byte[] newCertificateData = await response.Content.ReadAsByteArrayAsync();
+
+                Console.WriteLine("Saving the certificate: ");
+
+                var certificateProperties = new CertificateProperties
+                {
+                    CertificateAlias = certificateName,
+                    CertificatePassword = certPassword,
+                    Id = certificateName,
+                    DownloadMode = DownloadMode.OnDemand,
+                    StorageProperties = new StorageProperties
+                    {
+                        Path = certificateLocalStorePath,
+                        StorageFormat = StorageFormat.Plain
+                    }
+                };
+
+                await StoreAsync(certificateProperties, newCertificateData);
+                Console.WriteLine($"New certificate stored for ID: {certificateProperties.Id}");
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"Error: {e.Message}");
+                throw; // Rethrowing the runtime exception
+            }
+        }
+
+        public static async Task StoreAsync(CertificateProperties certificateProperties, byte[] certificateData)
+        {
+            var storageProperties = certificateProperties.StorageProperties;
+            string storagePath = storageProperties.Path;
+
+            Console.WriteLine($"Store certificate to directory: {storagePath}");
+
+            if (storageProperties.StorageFormat == StorageFormat.Encrypted)
+            {
+                Console.WriteLine("Encrypting certificate data before storage.");
+
+                // Base64 encode the byte array
+                string encodedKeyStoreStr = Convert.ToBase64String(certificateData);
+                byte[] encodedKeyStore = Encoding.UTF8.GetBytes(encodedKeyStoreStr);
+
+                // Encrypt data
+                var encryptor = new StrongBinaryEncryptor();
+                encryptor.SetPassword(masterPassword);
+                certificateData = encryptor.Encrypt(encodedKeyStore);
+            }
+
+            try
+            {
+                // Ensure directory exists
+                string directory = Path.GetDirectoryName(storagePath);
+                if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+                {
+                    Directory.CreateDirectory(directory);
+                }
+
+                // Write file
+                await File.WriteAllBytesAsync(storagePath, certificateData);
+            }
+            catch (IOException e)
+            {
+                throw new IOException($"Failed to write KeyStore to file: {storagePath}", e);
+            }
+        }
+    }
+
+    // --- Mock Encryptor ---
+    // Represents the third-party encryptor used in your Java snippet
+    public class StrongBinaryEncryptor
+    {
+        private string _password;
+
+        public void SetPassword(string password)
+        {
+            _password = password;
+        }
+
+        public byte[] Encrypt(byte[] data)
+        {
+            // TODO: Implement actual AES or preferred .NET encryption logic here
+            return data; 
+        }
     }
 }
