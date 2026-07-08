@@ -1,0 +1,53 @@
+using System;
+using System.IO;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
+using System.Threading.Tasks;
+
+public async Task<X509Certificate2> LoadEncryptedCertificateAsync(
+    string filePath, 
+    string encryptionPassword, 
+    string certificatePassword)
+{
+    // 1. Validate the file exists
+    if (!File.Exists(filePath))
+    {
+        throw new FileNotFoundException($"The certificate file was not found at: {filePath}");
+    }
+
+    // 2. Read the encrypted bytes from disk asynchronously
+    byte[] encryptedData = await File.ReadAllBytesAsync(filePath);
+
+    // 3. Decrypt the binary data
+    var encryptor = new StrongBinaryEncryptor();
+    encryptor.SetPassword(encryptionPassword);
+
+    byte[] decryptedData;
+    try
+    {
+        decryptedData = encryptor.Decrypt(encryptedData);
+    }
+    catch (CryptographicException ex)
+    {
+        throw new InvalidOperationException("Failed to decrypt the certificate. The encryption password may be incorrect, or the file is corrupted.", ex);
+    }
+
+    // 4. Load into X509Certificate2 and clear raw bytes from memory
+    try
+    {
+        // Using EphemeralKeySet prevents Windows from leaving temporary key files on the disk 
+        // when loading certificates directly from a byte array.
+        var flags = X509KeyStorageFlags.EphemeralKeySet;
+        
+        return new X509Certificate2(decryptedData, certificatePassword, flags);
+    }
+    finally
+    {
+        // Security Best Practice: Zero out the decrypted byte array in memory 
+        // as soon as the X509Certificate2 object has safely consumed it.
+        if (decryptedData != null)
+        {
+            Array.Clear(decryptedData, 0, decryptedData.Length);
+        }
+    }
+}
