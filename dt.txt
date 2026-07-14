@@ -1,11 +1,3 @@
-$chain = New-Object System.Security.Cryptography.X509Certificates.X509Chain
-$result = $chain.Build($cert)
-
-"Trusted: $result"
-
-$chain.ChainStatus | Format-Table Status, StatusInformation
-
-$chain.ChainElements | ForEach-Object {
-    $_.Certificate |
-        Select Subject,Issuer,Thumbprint,NotAfter
-}
+Get-ItemProperty `
+'HKLM:\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\TLS 1.2\Client' `
+-ErrorAction Ignore
