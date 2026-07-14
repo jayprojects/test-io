@@ -1,11 +1,11 @@
-$url = "https://yourserver.com"
+$chain = New-Object System.Security.Cryptography.X509Certificates.X509Chain
+$result = $chain.Build($cert)
 
-$tcp = New-Object System.Net.Sockets.TcpClient
-$tcp.Connect(([uri]$url).Host,443)
+"Trusted: $result"
 
-$ssl = New-Object System.Net.Security.SslStream($tcp.GetStream(),$false,{$true})
-$ssl.AuthenticateAsClient(([uri]$url).Host)
+$chain.ChainStatus | Format-Table Status, StatusInformation
 
-$cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($ssl.RemoteCertificate)
-
-$cert | Format-List Subject,Issuer,Thumbprint
+$chain.ChainElements | ForEach-Object {
+    $_.Certificate |
+        Select Subject,Issuer,Thumbprint,NotAfter
+}
