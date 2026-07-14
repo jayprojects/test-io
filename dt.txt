@@ -1,102 +1,11 @@
-using System;
-using System.IO;
-using System.Security.Cryptography;
+$url = "https://yourserver.com"
 
-namespace myapplication
-{
-    public class StrongBinaryEncryptor
-    {
-        private string _password;
-        
-        // Security parameters
-        private const int SaltSize = 16; // 128 bit
-        private const int KeySize = 32;  // 256 bit
-        private const int Iterations = 100000; // Recommended minimum for PBKDF2
+$tcp = New-Object System.Net.Sockets.TcpClient
+$tcp.Connect(([uri]$url).Host,443)
 
-        public void SetPassword(string password)
-        {
-            _password = password;
-        }
+$ssl = New-Object System.Net.Security.SslStream($tcp.GetStream(),$false,{$true})
+$ssl.AuthenticateAsClient(([uri]$url).Host)
 
-        public byte[] Encrypt(byte[] data)
-        {
-            if (string.IsNullOrEmpty(_password)) 
-                throw new InvalidOperationException("Password must be set before encrypting.");
-            if (data == null || data.Length == 0) 
-                return data;
+$cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($ssl.RemoteCertificate)
 
-            using (Aes aes = Aes.Create())
-            {
-                aes.KeySize = 256;
-                aes.GenerateIV(); // Generate a random Initialization Vector
-                byte[] iv = aes.IV;
-
-                // Generate a random salt for key derivation
-                byte[] salt = new byte[SaltSize];
-                using (var rng = RandomNumberGenerator.Create())
-                {
-                    rng.GetBytes(salt);
-                }
-
-                // Derive the key from the password and salt
-                using (var pbkdf2 = new Rfc2898DeriveBytes(_password, salt, Iterations, HashAlgorithmName.SHA256))
-                {
-                    aes.Key = pbkdf2.GetBytes(KeySize);
-                }
-
-                using (MemoryStream msEncrypt = new MemoryStream())
-                {
-                    // Prepend the Salt and IV to the output so we can extract them during decryption
-                    msEncrypt.Write(salt, 0, salt.Length);
-                    msEncrypt.Write(iv, 0, iv.Length);
-
-                    using (CryptoStream csEncrypt = new CryptoStream(msEncrypt, aes.CreateEncryptor(), CryptoStreamMode.Write))
-                    {
-                        csEncrypt.Write(data, 0, data.Length);
-                        csEncrypt.FlushFinalBlock();
-                    }
-                    return msEncrypt.ToArray();
-                }
-            }
-        }
-
-        public byte[] Decrypt(byte[] data)
-        {
-            if (string.IsNullOrEmpty(_password)) 
-                throw new InvalidOperationException("Password must be set before decrypting.");
-            if (data == null || data.Length == 0) 
-                return data;
-
-            using (Aes aes = Aes.Create())
-            {
-                aes.KeySize = 256;
-
-                using (MemoryStream msDecrypt = new MemoryStream(data))
-                {
-                    // 1. Extract the Salt
-                    byte[] salt = new byte[SaltSize];
-                    msDecrypt.Read(salt, 0, salt.Length);
-
-                    // 2. Extract the IV (AES block size is always 128 bits / 16 bytes)
-                    byte[] iv = new byte[aes.BlockSize / 8];
-                    msDecrypt.Read(iv, 0, iv.Length);
-
-                    // 3. Re-derive the key using the exact same salt and password
-                    using (var pbkdf2 = new Rfc2898DeriveBytes(_password, salt, Iterations, HashAlgorithmName.SHA256))
-                    {
-                        aes.Key = pbkdf2.GetBytes(KeySize);
-                    }
-                    aes.IV = iv;
-
-                    // 4. Decrypt the rest of the stream
-                    using (CryptoStream csDecrypt = new CryptoStream(msDecrypt, aes.CreateDecryptor(), CryptoStreamMode.Read))
-                    using (MemoryStream msPlain = new MemoryStream())
-                    {
-                        csDecrypt.CopyTo(msPlain);
-                        return msPlain.ToArray();
-                    }
-                }
-            }
-        }
-    }
-}
+$cert | Format-List Subject,Issuer,Thumbprint
