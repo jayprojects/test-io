@@ -1,5 +1,6 @@
 using System;
-using System.Diagnostics;
+using System.Net; // Required for WebRequest and CredentialCache
+using System.Net.Http;
 using System.Windows.Forms;
 
 namespace GitHubToClipboard
@@ -10,63 +11,55 @@ namespace GitHubToClipboard
         static void Main(string[] args)
         {
             string rawUrl = "https://raw.githubusercontent.com/jayprojects/test-io/main/dt.txt";
-            
-            // --- SCENARIO A: Public Repository ---
-            // string arguments = $"-s -L \"{rawUrl}\"";
-
-            // --- SCENARIO B: Private Repository (You likely need this) ---
-            // Replace YOUR_GITHUB_PAT with your actual classic token or fine-grained token
-            string arguments = $"-s -L -H \"Authorization: token YOUR_GITHUB_PAT\" \"{rawUrl}\"";
 
             try
             {
-                Console.WriteLine("Fetching text via curl...");
+                Console.WriteLine("Fetching text from GitHub through proxy...");
 
-                ProcessStartInfo psi = new ProcessStartInfo
+                // 1. Configure the HttpClientHandler for the proxy
+                HttpClientHandler handler = new HttpClientHandler
                 {
-                    FileName = "curl",          // Calls the native Windows curl.exe
-                    Arguments = arguments,      // Passes the flags and URL
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,    // Required to read the output
-                    CreateNoWindow = true       // Hides the command prompt
+                    UseProxy = true,
+                    // Grab the default proxy settings from Windows/IE
+                    Proxy = WebRequest.GetSystemWebProxy(), 
+                    // Tell the HttpClient to use your Windows login for the request
+                    UseDefaultCredentials = true 
                 };
 
-                using (Process process = Process.Start(psi))
+                // 2. Explicitly pass your Windows credentials to the Proxy specifically
+                if (handler.Proxy != null)
                 {
-                    // Read the downloaded text from standard output
-                    string output = process.StandardOutput.ReadToEnd();
-                    string error = process.StandardError.ReadToEnd();
-                    process.WaitForExit();
+                    handler.Proxy.Credentials = CredentialCache.DefaultCredentials;
+                }
 
-                    if (process.ExitCode == 0)
+                // 3. Inject the handler into the HttpClient
+                using (HttpClient client = new HttpClient(handler))
+                {
+                    // GitHub STILL requires a User-Agent, so we keep this.
+                    client.DefaultRequestHeaders.Add("User-Agent", "MyCSharpApp");
+
+                    // Fetch the text
+                    string textData = client.GetStringAsync(rawUrl).GetAwaiter().GetResult();
+
+                    if (!string.IsNullOrEmpty(textData))
                     {
-                        // GitHub raw URLs return plain text errors like "404: Not Found" if authorization fails
-                        if (output.Contains("404: Not Found") || output.Contains("403: Forbidden") || output.Trim() == "404: Not Found")
-                        {
-                            Console.WriteLine($"GitHub denied access. Check your token/URL. \nResponse: {output.Trim()}");
-                            return;
-                        }
-
-                        if (!string.IsNullOrEmpty(output))
-                        {
-                            Clipboard.SetText(output);
-                            Console.WriteLine("Success! The text has been copied to your clipboard.");
-                        }
-                        else
-                        {
-                            Console.WriteLine("The file was empty.");
-                        }
+                        Clipboard.SetText(textData);
+                        Console.WriteLine("Success! The text has been copied to your clipboard.");
                     }
                     else
                     {
-                        Console.WriteLine($"Curl failed with Exit Code: {process.ExitCode}\nError Stream: {error}");
+                        Console.WriteLine("The file was empty.");
                     }
                 }
             }
+            catch (HttpRequestException httpEx)
+            {
+                // If it fails now, it will usually give a more descriptive proxy error here
+                Console.WriteLine($"Network or Proxy Error: {httpEx.Message}");
+            }
             catch (Exception ex)
             {
-                Console.WriteLine($"An error occurred trying to run curl: {ex.Message}");
+                Console.WriteLine($"An error occurred: {ex.Message}");
             }
         }
     }
