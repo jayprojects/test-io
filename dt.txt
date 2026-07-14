@@ -1,1 +1,43 @@
-test2
+using System;
+using System.Net.Http;
+using System.Windows.Forms; // Requires Windows Forms dependency
+
+namespace GitHubToClipboard
+{
+    class Program
+    {
+        // STAThread is absolutely required to interact with the Windows Clipboard
+        [STAThread] 
+        static void Main(string[] args)
+        {
+            // The raw URL to the text file
+            string rawUrl = "https://raw.githubusercontent.com/jayprojects/test-io/main/dt.txt";
+
+            try
+            {
+                Console.WriteLine("Fetching text from GitHub...");
+
+                using (HttpClient client = new HttpClient())
+                {
+                    // Fetch the text synchronously to keep the code on the STA thread
+                    string textData = client.GetStringAsync(rawUrl).GetAwaiter().GetResult();
+
+                    if (!string.IsNullOrEmpty(textData))
+                    {
+                        // Copy the fetched text to the Windows Clipboard
+                        Clipboard.SetText(textData);
+                        Console.WriteLine("Success! The text has been copied to your clipboard.");
+                    }
+                    else
+                    {
+                        Console.WriteLine("The file was empty.");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An error occurred: {ex.Message}");
+            }
+        }
+    }
+}
