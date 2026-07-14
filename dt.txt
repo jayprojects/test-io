@@ -1,42 +1,72 @@
 using System;
-using System.Net.Http;
-using System.Windows.Forms; // Requires Windows Forms dependency
+using System.Diagnostics;
+using System.Windows.Forms;
 
 namespace GitHubToClipboard
 {
     class Program
     {
-        // STAThread is absolutely required to interact with the Windows Clipboard
-        [STAThread] 
+        [STAThread]
         static void Main(string[] args)
         {
-            // The raw URL to the text file
             string rawUrl = "https://raw.githubusercontent.com/jayprojects/test-io/main/dt.txt";
+            
+            // --- SCENARIO A: Public Repository ---
+            // string arguments = $"-s -L \"{rawUrl}\"";
+
+            // --- SCENARIO B: Private Repository (You likely need this) ---
+            // Replace YOUR_GITHUB_PAT with your actual classic token or fine-grained token
+            string arguments = $"-s -L -H \"Authorization: token YOUR_GITHUB_PAT\" \"{rawUrl}\"";
 
             try
             {
-                Console.WriteLine("Fetching text from GitHub...");
+                Console.WriteLine("Fetching text via curl...");
 
-                using (HttpClient client = new HttpClient())
+                ProcessStartInfo psi = new ProcessStartInfo
                 {
-                    // Fetch the text synchronously to keep the code on the STA thread
-                    string textData = client.GetStringAsync(rawUrl).GetAwaiter().GetResult();
+                    FileName = "curl",          // Calls the native Windows curl.exe
+                    Arguments = arguments,      // Passes the flags and URL
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,    // Required to read the output
+                    CreateNoWindow = true       // Hides the command prompt
+                };
 
-                    if (!string.IsNullOrEmpty(textData))
+                using (Process process = Process.Start(psi))
+                {
+                    // Read the downloaded text from standard output
+                    string output = process.StandardOutput.ReadToEnd();
+                    string error = process.StandardError.ReadToEnd();
+                    process.WaitForExit();
+
+                    if (process.ExitCode == 0)
                     {
-                        // Copy the fetched text to the Windows Clipboard
-                        Clipboard.SetText(textData);
-                        Console.WriteLine("Success! The text has been copied to your clipboard.");
+                        // GitHub raw URLs return plain text errors like "404: Not Found" if authorization fails
+                        if (output.Contains("404: Not Found") || output.Contains("403: Forbidden") || output.Trim() == "404: Not Found")
+                        {
+                            Console.WriteLine($"GitHub denied access. Check your token/URL. \nResponse: {output.Trim()}");
+                            return;
+                        }
+
+                        if (!string.IsNullOrEmpty(output))
+                        {
+                            Clipboard.SetText(output);
+                            Console.WriteLine("Success! The text has been copied to your clipboard.");
+                        }
+                        else
+                        {
+                            Console.WriteLine("The file was empty.");
+                        }
                     }
                     else
                     {
-                        Console.WriteLine("The file was empty.");
+                        Console.WriteLine($"Curl failed with Exit Code: {process.ExitCode}\nError Stream: {error}");
                     }
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"An error occurred: {ex.Message}");
+                Console.WriteLine($"An error occurred trying to run curl: {ex.Message}");
             }
         }
     }
