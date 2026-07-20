@@ -1,66 +1,71 @@
 using System;
-using System.Net; // Required for WebRequest and CredentialCache
-using System.Net.Http;
-using System.Windows.Forms;
+using System.IO;
+using System.Security.Cryptography;
+using System.Text;
 
-namespace GitHubToClipboard
+public static class AesCipher
 {
-    class Program
+    // 256-bit key = 32 bytes. Do NOT hard-code this in source in production —
+    // pull it from a key vault / environment / DPAPI-protected config.
+    private static readonly byte[] Key = GetKey();
+
+    public static string Encrypt(string plainText)
     {
-        [STAThread]
-        static void Main(string[] args)
+        using var aes = Aes.Create();
+        aes.KeySize = 256;
+        aes.Key = Key;              // must be exactly 32 bytes
+        aes.Mode = CipherMode.CBC;
+        aes.Padding = PaddingMode.PKCS7;
+        aes.GenerateIV();           // fresh random IV per message
+
+        using var memoryStream = new MemoryStream();
+
+        // Prepend the IV (16 bytes) so Decrypt can recover it.
+        memoryStream.Write(aes.IV, 0, aes.IV.Length);
+
+        using (var cryptoStream = new CryptoStream(
+                   memoryStream, aes.CreateEncryptor(), CryptoStreamMode.Write))
+        using (var writer = new StreamWriter(cryptoStream, Encoding.UTF8))
         {
-            string rawUrl = "https://raw.githubusercontent.com/jayprojects/test-io/main/dt.txt";
+            writer.Write(plainText);
+        } // disposing flushes the final block and closes the streams
 
-            try
-            {
-                Console.WriteLine("Fetching text from GitHub through proxy...");
+        return Convert.ToBase64String(memoryStream.ToArray());
+    }
 
-                // 1. Configure the HttpClientHandler for the proxy
-                HttpClientHandler handler = new HttpClientHandler
-                {
-                    UseProxy = true,
-                    // Grab the default proxy settings from Windows/IE
-                    Proxy = WebRequest.GetSystemWebProxy(), 
-                    // Tell the HttpClient to use your Windows login for the request
-                    UseDefaultCredentials = true 
-                };
+    public static string Decrypt(string cipherText)
+    {
+        byte[] cipherBytes = Convert.FromBase64String(cipherText);
 
-                // 2. Explicitly pass your Windows credentials to the Proxy specifically
-                if (handler.Proxy != null)
-                {
-                    handler.Proxy.Credentials = CredentialCache.DefaultCredentials;
-                }
+        using var aes = Aes.Create();
+        aes.KeySize = 256;
+        aes.Key = Key;
+        aes.Mode = CipherMode.CBC;
+        aes.Padding = PaddingMode.PKCS7;
 
-                // 3. Inject the handler into the HttpClient
-                using (HttpClient client = new HttpClient(handler))
-                {
-                    // GitHub STILL requires a User-Agent, so we keep this.
-                    client.DefaultRequestHeaders.Add("User-Agent", "MyCSharpApp");
+        int ivLength = aes.BlockSize / 8; // 16 bytes
+        if (cipherBytes.Length < ivLength)
+            throw new ArgumentException("Ciphertext is too short to contain an IV.");
 
-                    // Fetch the text
-                    string textData = client.GetStringAsync(rawUrl).GetAwaiter().GetResult();
+        // Split off the IV we prepended during encryption.
+        byte[] iv = new byte[ivLength];
+        Array.Copy(cipherBytes, 0, iv, 0, ivLength);
+        aes.IV = iv;
 
-                    if (!string.IsNullOrEmpty(textData))
-                    {
-                        Clipboard.SetText(textData);
-                        Console.WriteLine("Success! The text has been copied to your clipboard.");
-                    }
-                    else
-                    {
-                        Console.WriteLine("The file was empty.");
-                    }
-                }
-            }
-            catch (HttpRequestException httpEx)
-            {
-                // If it fails now, it will usually give a more descriptive proxy error here
-                Console.WriteLine($"Network or Proxy Error: {httpEx.Message}");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"An error occurred: {ex.Message}");
-            }
-        }
+        using var memoryStream = new MemoryStream(
+            cipherBytes, ivLength, cipherBytes.Length - ivLength);
+        using var cryptoStream = new CryptoStream(
+            memoryStream, aes.CreateDecryptor(), CryptoStreamMode.Read);
+        using var reader = new StreamReader(cryptoStream, Encoding.UTF8);
+
+        return reader.ReadToEnd();
+    }
+
+    private static byte[] GetKey()
+    {
+        // Placeholder. Replace with a real 32-byte key from secure storage.
+        // Example if you keep a base64 key in config:
+        //   return Convert.FromBase64String(Environment.GetEnvironmentVariable("APP_AES_KEY"));
+        throw new NotImplementedException("Provide a 32-byte AES-256 key.");
     }
 }
