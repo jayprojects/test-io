@@ -6,66 +6,78 @@ using System.Text;
 public static class AesCipher
 {
     // 256-bit key = 32 bytes. Do NOT hard-code this in source in production —
-    // pull it from a key vault / environment / DPAPI-protected config.
+    // pull it from a key vault / DPAPI-protected config / environment.
     private static readonly byte[] Key = GetKey();
+
+    // UTF-8 without a BOM, so no stray bytes end up inside the ciphertext.
+    private static readonly Encoding TextEncoding = new UTF8Encoding(false);
 
     public static string Encrypt(string plainText)
     {
-        using var aes = Aes.Create();
-        aes.KeySize = 256;
-        aes.Key = Key;              // must be exactly 32 bytes
-        aes.Mode = CipherMode.CBC;
-        aes.Padding = PaddingMode.PKCS7;
-        aes.GenerateIV();           // fresh random IV per message
-
-        using var memoryStream = new MemoryStream();
-
-        // Prepend the IV (16 bytes) so Decrypt can recover it.
-        memoryStream.Write(aes.IV, 0, aes.IV.Length);
-
-        using (var cryptoStream = new CryptoStream(
-                   memoryStream, aes.CreateEncryptor(), CryptoStreamMode.Write))
-        using (var writer = new StreamWriter(cryptoStream, Encoding.UTF8))
+        using (Aes aes = Aes.Create())
         {
-            writer.Write(plainText);
-        } // disposing flushes the final block and closes the streams
+            aes.KeySize = 256;
+            aes.Key = Key;              // must be exactly 32 bytes
+            aes.Mode = CipherMode.CBC;
+            aes.Padding = PaddingMode.PKCS7;
+            aes.GenerateIV();           // fresh random IV per message
 
-        return Convert.ToBase64String(memoryStream.ToArray());
+            using (MemoryStream memoryStream = new MemoryStream())
+            {
+                // Prepend the IV (16 bytes) so Decrypt can recover it.
+                memoryStream.Write(aes.IV, 0, aes.IV.Length);
+
+                using (ICryptoTransform encryptor = aes.CreateEncryptor())
+                using (CryptoStream cryptoStream =
+                           new CryptoStream(memoryStream, encryptor, CryptoStreamMode.Write))
+                using (StreamWriter writer = new StreamWriter(cryptoStream, TextEncoding))
+                {
+                    writer.Write(plainText);
+                } // disposing flushes the final block and closes the streams
+
+                return Convert.ToBase64String(memoryStream.ToArray());
+            }
+        }
     }
 
     public static string Decrypt(string cipherText)
     {
         byte[] cipherBytes = Convert.FromBase64String(cipherText);
 
-        using var aes = Aes.Create();
-        aes.KeySize = 256;
-        aes.Key = Key;
-        aes.Mode = CipherMode.CBC;
-        aes.Padding = PaddingMode.PKCS7;
+        using (Aes aes = Aes.Create())
+        {
+            aes.KeySize = 256;
+            aes.Key = Key;
+            aes.Mode = CipherMode.CBC;
+            aes.Padding = PaddingMode.PKCS7;
 
-        int ivLength = aes.BlockSize / 8; // 16 bytes
-        if (cipherBytes.Length < ivLength)
-            throw new ArgumentException("Ciphertext is too short to contain an IV.");
+            int ivLength = aes.BlockSize / 8; // 16 bytes
+            if (cipherBytes.Length < ivLength)
+                throw new ArgumentException("Ciphertext is too short to contain an IV.");
 
-        // Split off the IV we prepended during encryption.
-        byte[] iv = new byte[ivLength];
-        Array.Copy(cipherBytes, 0, iv, 0, ivLength);
-        aes.IV = iv;
+            // Split off the IV we prepended during encryption.
+            byte[] iv = new byte[ivLength];
+            Array.Copy(cipherBytes, 0, iv, 0, ivLength);
+            aes.IV = iv;
 
-        using var memoryStream = new MemoryStream(
-            cipherBytes, ivLength, cipherBytes.Length - ivLength);
-        using var cryptoStream = new CryptoStream(
-            memoryStream, aes.CreateDecryptor(), CryptoStreamMode.Read);
-        using var reader = new StreamReader(cryptoStream, Encoding.UTF8);
-
-        return reader.ReadToEnd();
+            using (MemoryStream memoryStream =
+                       new MemoryStream(cipherBytes, ivLength, cipherBytes.Length - ivLength))
+            using (ICryptoTransform decryptor = aes.CreateDecryptor())
+            using (CryptoStream cryptoStream =
+                       new CryptoStream(memoryStream, decryptor, CryptoStreamMode.Read))
+            using (StreamReader reader = new StreamReader(cryptoStream, TextEncoding))
+            {
+                return reader.ReadToEnd();
+            }
+        }
     }
 
     private static byte[] GetKey()
     {
         // Placeholder. Replace with a real 32-byte key from secure storage.
         // Example if you keep a base64 key in config:
-        //   return Convert.FromBase64String(Environment.GetEnvironmentVariable("APP_AES_KEY"));
+        //   return Convert.FromBase64String(
+        //       ConfigurationManager.AppSettings["AesKey"]);
         throw new NotImplementedException("Provide a 32-byte AES-256 key.");
     }
 }
